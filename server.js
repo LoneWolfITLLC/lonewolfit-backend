@@ -3672,9 +3672,9 @@ app.put("/api/user/edit-user-preference", authenticateJWT, async (req, res) => {
       return res.status(404).send({ error: "User preference not found." });
     }
 
-    console.log(
-      `User ID: ${user_id} successfully edited preference key: ${preference_key}.`
-    );
+    //console.log(
+    //  `User ID: ${user_id} successfully edited preference key: ${preference_key}.`
+    //);
     return res
       .status(200)
       .send({ message: "User preference edited successfully." });
