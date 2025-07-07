@@ -3771,9 +3771,9 @@ app.delete("/api/user/delete-preference", authenticateJWT, (req, res) => {
 app.get("/api/user/get-preference", authenticateJWT, (req, res) => {
   const { preference_key } = req.query; // Expect preference_key in the query parameters
   const user_id = req.user.id; // Extract user ID from JWT
-  console.log(
-    `User ID: ${user_id} is attempting to retrieve preference key: ${preference_key}`
-  );
+  //console.log(
+  //  `User ID: ${user_id} is attempting to retrieve preference key: ${preference_key}`
+  //);
   // SQL query to retrieve user preference
   const query = `SELECT preference_value FROM user_preferences WHERE user_id = ? AND preference_key = ?`;
   db.get(query, [user_id, preference_key], (err, row) => {
@@ -3791,9 +3791,9 @@ app.get("/api/user/get-preference", authenticateJWT, (req, res) => {
       return res.status(404).send({ error: "User preference not found." });
     }
 
-    console.log(
-      `User ID: ${user_id} retrieved preference key: ${preference_key} successfully.`
-    );
+    //console.log(
+    //  `User ID: ${user_id} retrieved preference key: ${preference_key} successfully.`
+    //);
     return res.status(200).send({ preference_value: row.preference_value });
   });
 });
