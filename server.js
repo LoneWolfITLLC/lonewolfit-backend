@@ -1758,6 +1758,18 @@ app.put("/api/auth/edit-user", authenticateJWT, async (req, res) => {
     console.error("User ID not found in request.");
     return res.status(401).json({ message: "Unauthorized: User ID not found" });
   }
+
+  // Check if user is allowed to edit
+  const userRow = await new Promise((resolve, reject) => {
+    db.get("SELECT endUserCanEdit FROM users WHERE id = ?", [userId], (err, row) => {
+      if (err) return reject(err);
+      resolve(row);
+    });
+  });
+  if (!userRow || userRow.endUserCanEdit === 0 || userRow.endUserCanEdit === false) {
+    return res.status(403).json({ message: "You are not allowed to edit your information." });
+  }
+
   let adminUser = await checkAdminStatus(email); //gpt is this the way to access the variable from the user in the request?
   const owner = await checkOwnerStatusByID(userId);
   try {
@@ -1827,72 +1839,63 @@ app.post(
     // Get the userId from the request, which is populated by the authenticateJWT middleware
     const userId = req.user.id;
 
-    // Fetch the user's Stripe customer ID and username based on userId
-    db.get(
-      "SELECT stripeCustomerId, username FROM users WHERE id = ?",
-      [userId],
-      async (err, row) => {
-        if (err) {
-          console.error("Error fetching user:", err);
-          return res
-            .status(500)
-            .json({ message: "Server error while fetching user." });
-        }
-
-        // Ensure that we correctly access the stripeCustomerId and username
-        const customerId = row ? row.stripeCustomerId : null;
-
-        // Validate that customerId is present
-        if (!customerId) {
-          console.warn("Missing Stripe customer ID for user ID:", userId);
-          return res
-            .status(400)
-            .json({ message: "No Stripe customer ID found." });
-        }
-
-        // Log the customerId and username before making the Stripe request
-        console.log(`Updating Stripe customer with ID: ${customerId}`);
-        console.log(`Updating Stripe customer username to: ${username}`);
-
-        let adminUser = await checkAdminStatus(email);
-
-        // Update the Stripe customer details
-        try {
-          // Build metadata, ensuring all values are strings and filtering out undefined/null
-          const rawMetadata = {
-            username,
-            dbaName,
-            businessAddress,
-            endUserCanEdit: String(true),
-            adminUser:
-              adminUser !== undefined && adminUser !== null
-                ? String(adminUser)
-                : String(false),
-          };
-          const metadata = Object.fromEntries(
-            Object.entries(rawMetadata).filter(
-              ([_, v]) => v !== undefined && v !== null
-            )
-          );
-          const updatedCustomer = await stripe.customers.update(customerId, {
-            name: `${firstName} ${lastName}`,
-            phone: phone,
-            address: stripeAddress, // Use the structured address object here
-            metadata,
-          });
-
-          console.log("Stripe customer updated successfully:", updatedCustomer); // Log response
-          return res
-            .status(200)
-            .json({ message: "Stripe customer updated successfully." });
-        } catch (error) {
-          console.error("Error updating Stripe customer:", error);
-          return res
-            .status(500)
-            .json({ message: "Failed to update Stripe customer." });
-        }
+    // Check if user is allowed to edit
+    db.get("SELECT endUserCanEdit, stripeCustomerId, username FROM users WHERE id = ?", [userId], async (err, row) => {
+      if (err) {
+        console.error("Error fetching user:", err);
+        return res.status(500).json({ message: "Server error while fetching user." });
       }
-    );
+      if (!row || row.endUserCanEdit === 0 || row.endUserCanEdit === false) {
+        return res.status(403).json({ message: "You are not allowed to edit your Stripe information." });
+      }
+
+      // Ensure that we correctly access the stripeCustomerId and username
+      const customerId = row ? row.stripeCustomerId : null;
+
+      // Validate that customerId is present
+      if (!customerId) {
+        console.warn("Missing Stripe customer ID for user ID:", userId);
+        return res.status(400).json({ message: "No Stripe customer ID found." });
+      }
+
+      // Log the customerId and username before making the Stripe request
+      console.log(`Updating Stripe customer with ID: ${customerId}`);
+      console.log(`Updating Stripe customer username to: ${username}`);
+
+      let adminUser = await checkAdminStatus(email);
+
+      // Update the Stripe customer details
+      try {
+        // Build metadata, ensuring all values are strings and filtering out undefined/null
+        const rawMetadata = {
+          username,
+          dbaName,
+          businessAddress,
+          endUserCanEdit: String(true),
+          adminUser:
+            adminUser !== undefined && adminUser !== null
+              ? String(adminUser)
+              : String(false),
+        };
+        const metadata = Object.fromEntries(
+          Object.entries(rawMetadata).filter(
+            ([_, v]) => v !== undefined && v !== null
+          )
+        );
+        const updatedCustomer = await stripe.customers.update(customerId, {
+          name: `${firstName} ${lastName}`,
+          phone: phone,
+          address: stripeAddress, // Use the structured address object here
+          metadata,
+        });
+
+        console.log("Stripe customer updated successfully:", updatedCustomer); // Log response
+        return res.status(200).json({ message: "Stripe customer updated successfully." });
+      } catch (error) {
+        console.error("Error updating Stripe customer:", error);
+        return res.status(500).json({ message: "Failed to update Stripe customer." });
+      }
+    });
   }
 );
 
