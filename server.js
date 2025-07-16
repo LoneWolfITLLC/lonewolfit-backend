@@ -500,11 +500,11 @@ app.get("/auth/google/callback", (req, res, next) => {
 			);
 			if (redirectUri)
 				return res.redirect(
-					`create_google_account.html?email=${info.tempUserData.email}&redirect_uri=${redirectUri}`
+					`/create_google_account.html?email=${info.tempUserData.email}&redirect_uri=${redirectUri}`
 				);
 			else
 				return res.redirect(
-					`create_google_account.html?email=${info.tempUserData.email}`
+					`/create_google_account.html?email=${info.tempUserData.email}`
 				);
 		}
 
