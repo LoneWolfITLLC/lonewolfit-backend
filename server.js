@@ -1852,7 +1852,7 @@ app.post(
 							username: username,
 							dbaName: dbaName,
 							businessAddress: businessAddress,
-							endUserCanEdit: true,
+							endUserCanEdit: row.endUserCanEdit, // Use existing value from DB
 							adminUser: adminUser,
 						}, // Update username in the customer's metadata
 					});
