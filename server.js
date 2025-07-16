@@ -527,8 +527,9 @@ app.get("/auth/google/callback", (req, res, next) => {
 			checkAdminStatusByID(user.id)
 				.then((admin) => {
 					console.log(redirectUri);
-					// Only send back the token to the frontend as JSON
-					return res.json({ token, admin });
+					return res.redirect(
+					`https://www.lonewolfit.io/login.html?token=${token}&admin=${admin}&redirect_uri=${redirectUri}`
+					);
 				})
 				.catch((error) => {
 					console.error("Error determining admin status: ", error);
