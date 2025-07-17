@@ -273,7 +273,7 @@ passport.serializeUser((user, done) => {
 });
 
 passport.deserializeUser((id, done) => {
-  console.log(`Deserializing user with ID: ${id}`); // Log the ID being deserialized
+  //console.log(`Deserializing user with ID: ${id}`); // Log the ID being deserialized ONLY IN VERBOSE MODE
   db.get("SELECT * FROM users WHERE id = ?", [id], (err, user) => {
     if (err) {
       console.error("Error deserializing user:", err);
@@ -283,7 +283,7 @@ passport.deserializeUser((id, done) => {
       console.log(`No user found for ID: ${id}`); // Log if no user is found
       return done(null, false); // User not found
     }
-    console.log("User deserialized successfully:", user.email); // Log successful deserialization
+    //console.log("User deserialized successfully:", user.email); // Log successful deserialization (VERBOSE MODE)
     done(null, user); // Provide user details to done
   });
 });
