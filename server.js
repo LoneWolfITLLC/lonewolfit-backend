@@ -22,26 +22,6 @@ const bcrypt = require("bcrypt");
 const app = express();
 const PORT = process.env.PORT || 2096;
 
-// Middleware to restrict access on port 2096 to only /api and /auth endpoints
-app.use((req, res, next) => {
-  const hostHeader = req.headers.host || "";
-  // If the request is to port 2096, only allow /api and /auth endpoints
-  if (hostHeader.includes(":2096")) {
-    if (
-      req.path === "/api" ||
-      req.path === "/auth" ||
-      req.path.startsWith("/api/") ||
-      req.path.startsWith("/auth/")
-    ) {
-      return next();
-    }
-    // Block everything else on :2096
-    return res.status(404).json({ error: "Not found" });
-  }
-  // If not on port 2096, allow all routes
-  return next();
-});
-
 const corsOptions = {
   origin: function (origin, callback) {
     let allowedOrigins = [];
