@@ -21,6 +21,7 @@ const dns = require("dns");
 const bcrypt = require("bcrypt");
 const app = express();
 const PORT = process.env.PORT || 2096;
+
 const corsOptions = {
   origin: function (origin, callback) {
     let allowedOrigins = [];
@@ -37,8 +38,6 @@ const corsOptions = {
         "https://www.lonewolfit.io:8443",
         "https://www.lonewolfit.io",
         "https://lonewolfit.io",
-        "https://lonewolfit.io:2096",
-        "https://www.lonewolfit.io:2096",
       ];
     }
 
@@ -273,7 +272,7 @@ passport.serializeUser((user, done) => {
 });
 
 passport.deserializeUser((id, done) => {
-  console.log(`Deserializing user with ID: ${id}`); // Log the ID being deserialized
+  //console.log(`Deserializing user with ID: ${id}`); // Log the ID being deserialized ONLY IN VERBOSE MODE
   db.get("SELECT * FROM users WHERE id = ?", [id], (err, user) => {
     if (err) {
       console.error("Error deserializing user:", err);
@@ -283,7 +282,7 @@ passport.deserializeUser((id, done) => {
       console.log(`No user found for ID: ${id}`); // Log if no user is found
       return done(null, false); // User not found
     }
-    console.log("User deserialized successfully:", user.email); // Log successful deserialization
+    //console.log("User deserialized successfully:", user.email); // Log successful deserialization (VERBOSE MODE)
     done(null, user); // Provide user details to done
   });
 });
@@ -1861,11 +1860,9 @@ app.post(
             .json({ message: "Server error while fetching user." });
         }
         if (!row || row.endUserCanEdit === 0 || row.endUserCanEdit === false) {
-          return res
-            .status(403)
-            .json({
-              message: "You are not allowed to edit your Stripe information.",
-            });
+          return res.status(403).json({
+            message: "You are not allowed to edit your Stripe information.",
+          });
         }
 
         // Ensure that we correctly access the stripeCustomerId and username
@@ -2784,23 +2781,50 @@ app.post("/api/user/create-preference", authenticateJWT, (req, res) => {
       .status(400)
       .send({ error: "Preference key and value are required." });
   }
-  // SQL query to insert a new user preference
-  const query = `INSERT INTO user_preferences (user_id, preference_key, preference_value) VALUES (?, ?, ?)`;
-  db.run(query, [user_id, preference_key, preference_value], function (err) {
+
+  // First, check if the preference already exists for this user
+  const checkQuery = `SELECT 1 FROM user_preferences WHERE user_id = ? AND preference_key = ?`;
+  db.get(checkQuery, [user_id, preference_key], (err, row) => {
     if (err) {
-      console.error("Error creating user preference:", err.message);
+      console.error("Error checking existing user preference:", err.message);
       return res
         .status(500)
-        .send({ error: "An error occurred while creating user preference." });
+        .send({ error: "An error occurred while checking user preference." });
+    }
+    if (row) {
+      // Preference already exists
+      console.log(
+        `Preference key: ${preference_key} already exists for user ID: ${user_id}.`
+      );
+      return res
+        .status(409)
+        .send({ error: "Preference already exists for this user." });
     }
 
-    console.log(
-      `User ID: ${user_id} created preference key: ${preference_key} successfully.`
+    // SQL query to insert a new user preference
+    const insertQuery = `INSERT INTO user_preferences (user_id, preference_key, preference_value) VALUES (?, ?, ?)`;
+    db.run(
+      insertQuery,
+      [user_id, preference_key, preference_value],
+      function (err) {
+        if (err) {
+          console.error("Error creating user preference:", err.message);
+          return res
+            .status(500)
+            .send({
+              error: "An error occurred while creating user preference.",
+            });
+        }
+
+        console.log(
+          `User ID: ${user_id} created preference key: ${preference_key} successfully.`
+        );
+        return res.status(201).send({
+          message: "User preference created successfully.",
+          id: this.lastID,
+        });
+      }
     );
-    return res.status(201).send({
-      message: "User preference created successfully.",
-      id: this.lastID,
-    });
   });
 });
 
