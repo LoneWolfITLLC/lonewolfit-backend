@@ -37,8 +37,6 @@ const corsOptions = {
         "https://www.lonewolfit.io:8443",
         "https://www.lonewolfit.io",
         "https://lonewolfit.io",
-        "https://lonewolfit.io:2096",
-        "https://www.lonewolfit.io:2096",
       ];
     }
 
