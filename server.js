@@ -21,6 +21,22 @@ const dns = require("dns");
 const bcrypt = require("bcrypt");
 const app = express();
 const PORT = process.env.PORT || 2096;
+
+// Middleware to only allow /api and /auth endpoints
+app.use((req, res, next) => {
+  // Allow only /api or /auth at the root, or any subpath
+  if (
+    req.path === "/api" ||
+    req.path === "/auth" ||
+    req.path.startsWith("/api/") ||
+    req.path.startsWith("/auth/")
+  ) {
+    return next();
+  }
+  // Block everything else
+  res.status(404).json({ error: "Not found" });
+});
+
 const corsOptions = {
   origin: function (origin, callback) {
     let allowedOrigins = [];
