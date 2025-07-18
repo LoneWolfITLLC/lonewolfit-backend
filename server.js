@@ -2781,23 +2781,50 @@ app.post("/api/user/create-preference", authenticateJWT, (req, res) => {
       .status(400)
       .send({ error: "Preference key and value are required." });
   }
-  // SQL query to insert a new user preference
-  const query = `INSERT INTO user_preferences (user_id, preference_key, preference_value) VALUES (?, ?, ?)`;
-  db.run(query, [user_id, preference_key, preference_value], function (err) {
+
+  // First, check if the preference already exists for this user
+  const checkQuery = `SELECT 1 FROM user_preferences WHERE user_id = ? AND preference_key = ?`;
+  db.get(checkQuery, [user_id, preference_key], (err, row) => {
     if (err) {
-      console.error("Error creating user preference:", err.message);
+      console.error("Error checking existing user preference:", err.message);
       return res
         .status(500)
-        .send({ error: "An error occurred while creating user preference." });
+        .send({ error: "An error occurred while checking user preference." });
+    }
+    if (row) {
+      // Preference already exists
+      console.log(
+        `Preference key: ${preference_key} already exists for user ID: ${user_id}.`
+      );
+      return res
+        .status(409)
+        .send({ error: "Preference already exists for this user." });
     }
 
-    console.log(
-      `User ID: ${user_id} created preference key: ${preference_key} successfully.`
+    // SQL query to insert a new user preference
+    const insertQuery = `INSERT INTO user_preferences (user_id, preference_key, preference_value) VALUES (?, ?, ?)`;
+    db.run(
+      insertQuery,
+      [user_id, preference_key, preference_value],
+      function (err) {
+        if (err) {
+          console.error("Error creating user preference:", err.message);
+          return res
+            .status(500)
+            .send({
+              error: "An error occurred while creating user preference.",
+            });
+        }
+
+        console.log(
+          `User ID: ${user_id} created preference key: ${preference_key} successfully.`
+        );
+        return res.status(201).send({
+          message: "User preference created successfully.",
+          id: this.lastID,
+        });
+      }
     );
-    return res.status(201).send({
-      message: "User preference created successfully.",
-      id: this.lastID,
-    });
   });
 });
 
