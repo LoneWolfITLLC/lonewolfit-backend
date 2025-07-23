@@ -685,7 +685,7 @@ app.post(
                   function (err) {
                     if (err) {
                       console.error("Registration error:", err);
-                      return res.status(500).json({ message: "Server Error" });
+                      return res.status(500).json({ message: err.message });
                     } else {
                       console.log("User registered:", {
                         id: this.lastID,
@@ -706,7 +706,7 @@ app.post(
                 console.error("Error creating Stripe customer:", stripeError);
                 return res
                   .status(500)
-                  .json({ message: "Failed to create Stripe customer" });
+                  .json({ message: stripeError.message });
               }
             }
           );
@@ -714,7 +714,7 @@ app.post(
       );
     } catch (err) {
       console.error("Error registering user:", err);
-      return res.status(500).send("Error registering user");
+      return res.status(500).send("Error registering user: " + err.message);
     }
   }
 );
@@ -802,7 +802,7 @@ app.post("/api/auth/register", upload.none(), async (req, res) => {
       async (err, existingUser) => {
         if (err) {
           console.error("Database error while checking email:", err);
-          return res.status(500).send("Error checking email existence");
+          return res.status(500).send("Error checking email existence: " + err.message);
         }
 
         if (existingUser) {
@@ -817,7 +817,7 @@ app.post("/api/auth/register", upload.none(), async (req, res) => {
           async (err, existingUsername) => {
             if (err) {
               console.error("Database error while checking username:", err);
-              return res.status(500).send("Error checking username existence");
+              return res.status(500).send("Error checking username existence: " + err.message);
             }
 
             if (existingUsername) {
@@ -858,7 +858,7 @@ app.post("/api/auth/register", upload.none(), async (req, res) => {
                   console.error("Error sending email:", error);
                   return res
                     .status(500)
-                    .send("Error sending verification email");
+                    .send("Error sending verification email: " + error.message);
                 }
                 console.log("Verification code sent to:", email);
                 return res
@@ -869,7 +869,7 @@ app.post("/api/auth/register", upload.none(), async (req, res) => {
               console.error("Error creating Stripe customer:", stripeError);
               return res
                 .status(500)
-                .json({ message: "Failed to create Stripe customer" });
+                .json({ message: "Failed to create Stripe customer: " + stripeError.message });
             }
           }
         );
@@ -956,7 +956,7 @@ app.post("/api/auth/verify-registration", async (req, res) => {
           function (err) {
             if (err) {
               console.error("Registration error:", err);
-              return res.status(500).json({ message: "Server SQL Error" });
+              return res.status(500).json({ message: err.message });
             } else {
               console.log("User registered:", {
                 id: this.lastID,
@@ -974,7 +974,7 @@ app.post("/api/auth/verify-registration", async (req, res) => {
         console.error("Stripe error:", error);
         return res
           .status(500)
-          .json({ message: "Failed to create Stripe customer" });
+          .json({ message: "Failed to create Stripe customer: " + error.message });
       }
     } else {
       console.log("No temporary registration found for this email:", email);
@@ -1539,7 +1539,7 @@ app.get("/api/auth/get-user-details", authenticateJWT, (req, res) => {
     (err, user) => {
       if (err) {
         console.error("Error fetching user details from DB:", err);
-        return res.status(500).json({ message: "Server Error" });
+        return res.status(500).json({ message: err.message });
       }
 
       if (!user) {
@@ -1569,7 +1569,7 @@ app.post("/api/auth/get-user-details/withouttoken", (req, res) => {
     (err, user) => {
       if (err) {
         console.error("Error fetching user details from DB:", err);
-        return res.status(500).json({ message: "Server Error" });
+        return res.status(500).json({ message: err.message });
       }
 
       if (!user) {
@@ -1712,7 +1712,7 @@ app.put("/api/admin/edit-user", authenticateJWT, async (req, res) => {
     res.status(200).json({ message: "User updated successfully!" });
   } catch (error) {
     console.error("Error updating user:", error);
-    res.status(500).json({ message: "Error updating user" });
+    res.status(500).json({ message: "Error updating user: " + error.message });
   }
 });
 
@@ -1816,7 +1816,7 @@ app.put("/api/auth/edit-user", authenticateJWT, async (req, res) => {
     res.status(200).json({ message: "User updated successfully!" });
   } catch (error) {
     console.error("Error updating user:", error);
-    res.status(500).json({ message: "Error updating user" });
+    res.status(500).json({ message: "Error updating user: " + error.message });
   }
 });
 
@@ -1857,7 +1857,7 @@ app.post(
           console.error("Error fetching user:", err);
           return res
             .status(500)
-            .json({ message: "Server error while fetching user." });
+            .json({ message: "Server error while fetching user: " + err.message });
         }
         if (!row || row.endUserCanEdit === 0 || row.endUserCanEdit === false) {
           return res.status(403).json({
@@ -1915,7 +1915,7 @@ app.post(
           console.error("Error updating Stripe customer:", error);
           return res
             .status(500)
-            .json({ message: "Failed to update Stripe customer." });
+            .json({ message: "Failed to update Stripe customer: " + error.message });
         }
       }
     );
@@ -2040,8 +2040,7 @@ app.post(
     } catch (err) {
       console.error("Error updating Stripe customer:", err);
       return res.status(500).json({
-        message: "Failed to update Stripe customer.",
-        error: err.message,
+        message: "Failed to update Stripe customer: " + err.message,
       });
     }
   }
@@ -2106,7 +2105,7 @@ app.post("/api/auth/send-verification-code", (req, res) => {
     transporter.sendMail(mailOptions, (error) => {
       if (error) {
         console.error("Error sending email:", error);
-        return res.status(500).send("Error sending verification email");
+        return res.status(500).send("Error sending verification email: " + error.message);
       }
       console.log("Verification code sent to:", email);
       res.status(200).send("Verification code sent to email.");
@@ -2328,7 +2327,7 @@ app.post("/api/sync-customers", authenticateJWT, async (req, res) => {
     console.error("Error during sync:", error);
     return res
       .status(500)
-      .send({ error: "An error occurred during sync to database" });
+      .send({ error: "An error occurred during sync to database: " + error.message });
   }
 });
 app.post(
@@ -2404,7 +2403,7 @@ app.get("/api/testimonials", authenticateJWT, (req, res) => {
         // Handle the error: send a 500 status response with an error message
         return res
           .status(500)
-          .json({ message: "Error checking user permissions" });
+          .json({ message: "Error checking user permissions: " + err.message });
       }
 
       // Check if the user object is found and if the user is an admin
@@ -2443,7 +2442,7 @@ app.get("/api/testimonials", authenticateJWT, (req, res) => {
           if (err) {
             return res
               .status(500)
-              .json({ message: "Error retrieving testimonials" });
+              .json({ message: "Error retrieving testimonials: " + err.message });
           }
           res.json(rows);
         }
@@ -2461,7 +2460,24 @@ app.get("/api/testimonials/approved", (req, res) => {
         console.error("Error retrieving approved testimonials:", err);
         return res
           .status(500)
-          .json({ message: "Error retrieving approved testimonials" });
+          .json({ message: "Error retrieving approved testimonials: " + err.message });
+      }
+      res.json(rows);
+    }
+  );
+});
+app.get("/api/users/testimonials", authenticateJWT, (req, res) => {
+  const userId = req.user.id;
+
+  db.all(
+    "SELECT * FROM testimonials WHERE user_id = ?",
+    [userId],
+    (err, rows) => {
+      if (err) {
+        console.error("Error retrieving user testimonials:", err);
+        return res
+          .status(500)
+          .json({ message: "Error retrieving user testimonials: " + err.message });
       }
       res.json(rows);
     }
@@ -2488,7 +2504,7 @@ app.post("/api/submit-testimonial", authenticateJWT, (req, res) => {
       if (err) {
         return res
           .status(500)
-          .json({ message: "Error submitting testimonial" });
+          .json({ message: "Error submitting testimonial: " + err.message });
       }
       res.status(201).json({
         message: "Testimonial submitted for approval",
@@ -2513,7 +2529,7 @@ app.post("/api/approve-testimonial", authenticateJWT, (req, res) => {
       console.error("Error fetching user from database:", err);
       return res
         .status(500)
-        .json({ message: "Error checking user permissions" });
+        .json({ message: "Error checking user permissions: " + err.message });
     }
 
     // Check if the user is found and is an admin
@@ -2533,7 +2549,7 @@ app.post("/api/approve-testimonial", authenticateJWT, (req, res) => {
           console.error("Error approving testimonial:", err);
           return res
             .status(500)
-            .json({ message: "Error approving testimonial" });
+            .json({ message: "Error approving testimonial: " + err.message });
         }
         if (this.changes === 0) {
           console.log(`Testimonial ID: ${testimonialId} not found.`);
@@ -2566,7 +2582,7 @@ app.post("/api/edit-testimonial", authenticateJWT, (req, res) => {
         console.error("Error fetching testimonial from database:", err);
         return res
           .status(500)
-          .json({ message: "Error retrieving testimonial" });
+          .json({ message: "Error retrieving testimonial: " + err.message });
       }
 
       if (!testimonial) {
@@ -2587,7 +2603,7 @@ app.post("/api/edit-testimonial", authenticateJWT, (req, res) => {
             console.error("Error fetching user from database:", err);
             return res
               .status(500)
-              .json({ message: "Error checking user permissions" });
+              .json({ message: "Error checking user permissions: " + err.message });
           }
 
           // Check if the user is found and is an admin or the original creator of the testimonial
@@ -2617,7 +2633,7 @@ app.post("/api/edit-testimonial", authenticateJWT, (req, res) => {
                 console.error("Error updating testimonial:", err);
                 return res
                   .status(500)
-                  .json({ message: "Error updating testimonial" });
+                  .json({ message: "Error updating testimonial: " + err.message });
               }
               if (this.changes === 0) {
                 console.log(
@@ -2657,7 +2673,7 @@ app.delete("/api/delete-testimonial", authenticateJWT, (req, res) => {
         console.error("Error fetching testimonial from database:", err);
         return res
           .status(500)
-          .json({ message: "Error retrieving testimonial" });
+          .json({ message: "Error retrieving testimonial: " + err.message });
       }
 
       if (!testimonial) {
@@ -2673,7 +2689,7 @@ app.delete("/api/delete-testimonial", authenticateJWT, (req, res) => {
             console.error("Error fetching user from database:", err);
             return res
               .status(500)
-              .json({ message: "Error checking user permissions" });
+              .json({ message: "Error checking user permissions: " + err.message });
           }
           // Check if the user is found and is an admin or the original creator of the testimonial
           const isAdmin = user?.adminUser ?? false;
@@ -2697,7 +2713,7 @@ app.delete("/api/delete-testimonial", authenticateJWT, (req, res) => {
                 console.error("Error deleting testimonial:", err);
                 return res
                   .status(500)
-                  .json({ message: "Error deleting testimonial" });
+                  .json({ message: "Error deleting testimonial: " + err.message });
               }
               if (this.changes === 0) {
                 console.log(
@@ -2718,7 +2734,71 @@ app.delete("/api/delete-testimonial", authenticateJWT, (req, res) => {
     }
   );
 });
+app.delete("/api/user/delete-testimonial", authenticateJWT, (req, res) => {
+  const { testimonialId } = req.body; // Expect testimonialId in the request body
+  const user_id = req.user.id; // Extract user ID from JWT
 
+  console.log(
+    `User ID: ${user_id} is attempting to delete testimonial ID: ${testimonialId}`
+  );
+
+  // Get the original creator of the testimonial
+  db.get(
+    "SELECT user_id FROM testimonials WHERE id = ?",
+    [testimonialId],
+    (err, testimonial) => {
+      if (err) {
+        console.error("Error fetching testimonial from database:", err);
+        return res
+          .status(500)
+          .json({ message: "Error retrieving testimonial: " + err.message });
+      }
+
+      if (!testimonial) {
+        console.log(`Testimonial ID: ${testimonialId} not found.`);
+        return res.status(404).json({ message: "Testimonial not found" });
+      }
+
+      // Only allow the original user to delete their testimonial
+      const isOriginalUser = testimonial.user_id === user_id;
+
+      if (!isOriginalUser) {
+        console.log(
+          `User ID: ${user_id} does not have permission to delete the testimonial.`
+        );
+        return res.status(403).json({
+          message: "You do not have permission to delete this testimonial",
+        });
+      }
+
+      // Proceed to delete the testimonial
+      db.run(
+        "DELETE FROM testimonials WHERE id = ?",
+        [testimonialId],
+        function (err) {
+          if (err) {
+            console.error("Error deleting testimonial:", err);
+            return res
+              .status(500)
+              .json({ message: "Error deleting testimonial: " + err.message });
+          }
+          if (this.changes === 0) {
+            console.log(
+              `No changes were made, testimonial ID: ${testimonialId} may not exist.`
+            );
+            return res
+              .status(404)
+              .json({ message: "Testimonial not found" });
+          }
+          console.log(
+            `Testimonial ID: ${testimonialId} has been deleted successfully by User ID: ${user_id}.`
+          );
+          res.json({ message: "Testimonial deleted successfully" });
+        }
+      );
+    }
+  );
+});
 app.put("/api/user/edit-user-preference", authenticateJWT, async (req, res) => {
   const { preference_key, preference_value } = req.body; // Extract necessary fields
   const user_id = req.user.id; // Extract user ID from JWT
@@ -2731,7 +2811,7 @@ app.put("/api/user/edit-user-preference", authenticateJWT, async (req, res) => {
       console.error("Error updating user preference:", err.message);
       return res
         .status(500)
-        .send({ error: "An error occurred while updating user preference." });
+        .send({ error: "An error occurred while updating user preference: " + err.message });
     }
 
     if (this.changes === 0) {
@@ -2760,7 +2840,7 @@ app.get("/api/user/preferences", authenticateJWT, async (req, res) => {
     if (err) {
       console.error("Error retrieving user preferences:", err.message);
       return res.status(500).send({
-        error: "An error occurred while retrieving user preferences.",
+        error: "An error occurred while retrieving user preferences: " + err.message,
       });
     }
 
@@ -2789,7 +2869,7 @@ app.post("/api/user/create-preference", authenticateJWT, (req, res) => {
       console.error("Error checking existing user preference:", err.message);
       return res
         .status(500)
-        .send({ error: "An error occurred while checking user preference." });
+        .send({ error: "An error occurred while checking user preference: " + err.message });
     }
     if (row) {
       // Preference already exists
@@ -2812,7 +2892,7 @@ app.post("/api/user/create-preference", authenticateJWT, (req, res) => {
           return res
             .status(500)
             .send({
-              error: "An error occurred while creating user preference.",
+              error: "An error occurred while creating user preference: " + err.message,
             });
         }
 
@@ -2841,7 +2921,7 @@ app.delete("/api/user/delete-preference", authenticateJWT, (req, res) => {
       console.error("Error deleting user preference:", err.message);
       return res
         .status(500)
-        .send({ error: "An error occurred while deleting user preference." });
+        .send({ error: "An error occurred while deleting user preference: " + err.message });
     }
 
     if (this.changes === 0) {
@@ -2873,7 +2953,7 @@ app.get("/api/user/get-preference", authenticateJWT, (req, res) => {
       console.error("Error retrieving user preference:", err.message);
       return res
         .status(500)
-        .send({ error: "An error occurred while retrieving user preference." });
+        .send({ error: "An error occurred while retrieving user preference: " + err.message });
     }
 
     if (!row) {
