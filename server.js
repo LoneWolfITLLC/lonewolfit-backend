@@ -3187,7 +3187,7 @@ app.post("/api/contact-form/submit", (req, res) => {
 });
 
 app.post("/api/user/contact-form/submit", authenticateJWT, (req, res) => {
-	const { message } = req.body;
+	const { message, phone, useAccountPhoneNumber } = req.body;
 	// Extract user ID from JWT
 	const userId = req.user.id;
 	if (!message || message.trim() === "") {
@@ -3195,6 +3195,9 @@ app.post("/api/user/contact-form/submit", authenticateJWT, (req, res) => {
 	}
 	if (message.length > 500) {
 		return res.status(400).send("Message cannot exceed 500 characters.");
+	}
+	if(!useAccountPhoneNumber && (!phone || !/^\d{10}$/.test(String(phone)))) {
+		return res.status(400).send("Phone number must be a 10-digit number.");
 	}
 	const user = db.get(
 		"SELECT * FROM users WHERE id = ?",
@@ -3219,7 +3222,7 @@ app.post("/api/user/contact-form/submit", authenticateJWT, (req, res) => {
 						" " +
 						row.last_name,
 					row.email,
-					row.phone,
+					useAccountPhoneNumber ? row.phone : phone,
 					userId,
 					message,
 				],
