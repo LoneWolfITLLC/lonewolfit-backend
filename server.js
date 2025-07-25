@@ -3140,7 +3140,9 @@ app.delete(
 						if (this.changes === 0) {
 							return res.status(404).send("Submission not found.");
 						}
-            console.log(`Admin User ID: ${userId} deleted contact form submission ID: ${submissionId} successfully.`);
+						console.log(
+							`Admin User ID: ${userId} deleted contact form submission ID: ${submissionId} successfully.`
+						);
 						res.send("Contact form submission deleted successfully.");
 					}
 				);
@@ -3155,9 +3157,9 @@ app.post("/api/contact-form/submit", (req, res) => {
 		return res.status(400).send("Name, phone, and message are required.");
 	}
 
-  if (!message || message.trim() === "") {
-    return res.status(400).send("Message is required.");
-  }
+	if (!message || message.trim() === "") {
+		return res.status(400).send("Message is required.");
+	}
 
 	if (message.length > 500) {
 		return res.status(400).send("Message cannot exceed 500 characters.");
@@ -3178,45 +3180,64 @@ app.post("/api/contact-form/submit", (req, res) => {
 					.status(500)
 					.send("Server error while submitting form: " + err.message);
 			}
-      console.log(`Contact form submitted by ${name} with phone ${phone}.`);
+			console.log(`Contact form submitted by ${name} with phone ${phone}.`);
 			res.status(201).send("Contact form submitted successfully.");
 		}
 	);
 });
 
 app.post("/api/user/contact-form/submit", authenticateJWT, (req, res) => {
-  const { message } = req.body;
-// Extract user ID from JWT
-  const userId = req.user.id; 
-  if (!message || message.trim() === "") {
-    return res.status(400).send("Message is required.");
-  }
-  if(message.length > 500) {
-    return res.status(400).send("Message cannot exceed 500 characters.");
-  }
-  const user = db.get("SELECT * FROM users WHERE id = ?", [userId], (err, row) => {
-    if (err) {
-      console.error("Error fetching user information:", err);
-      return res.status(500).send("Server error while fetching user information: " + err.message);
-    }
-    if (!row) {
-      return res.status(404).send("User not found.");
-    }
-    // User information is available in 'row'
-    // Now you can insert the contact form submission into the database
-    db.run(
-      "INSERT INTO contact_form_submissions (name, email, phone, user_id, message) VALUES (?, ?, ?, ?, ?)",
-      [row.first_name + (row.middle_name? " " + row.middle_name : "") + " " + row.last_name, row.email, row.phone, userId, message],
-      function (err) {
-        if (err) {
-          console.error("Error submitting contact form:", err);
-          return res.status(500).send("Server error while submitting form: " + err.message);
-        }
-        console.log(`User ID: ${userId} submitted contact form successfully.`);
-        res.status(201).send("Contact form submitted successfully.");
-      }
-    );
-  });
+	const { message } = req.body;
+	// Extract user ID from JWT
+	const userId = req.user.id;
+	if (!message || message.trim() === "") {
+		return res.status(400).send("Message is required.");
+	}
+	if (message.length > 500) {
+		return res.status(400).send("Message cannot exceed 500 characters.");
+	}
+	const user = db.get(
+		"SELECT * FROM users WHERE id = ?",
+		[userId],
+		(err, row) => {
+			if (err) {
+				console.error("Error fetching user information:", err);
+				return res
+					.status(500)
+					.send("Server error while fetching user information: " + err.message);
+			}
+			if (!row) {
+				return res.status(404).send("User not found.");
+			}
+			// User information is available in 'row'
+			// Now you can insert the contact form submission into the database
+			db.run(
+				"INSERT INTO contact_form_submissions (name, email, phone, user_id, message) VALUES (?, ?, ?, ?, ?)",
+				[
+					row.first_name +
+						(row.middle_name ? " " + row.middle_name : "") +
+						" " +
+						row.last_name,
+					row.email,
+					row.phone,
+					userId,
+					message,
+				],
+				function (err) {
+					if (err) {
+						console.error("Error submitting contact form:", err);
+						return res
+							.status(500)
+							.send("Server error while submitting form: " + err.message);
+					}
+					console.log(
+						`User ID: ${userId} submitted contact form successfully.`
+					);
+					res.status(201).send("Contact form submitted successfully.");
+				}
+			);
+		}
+	);
 });
 app.get("/api/user/contact-form/submissions", authenticateJWT, (req, res) => {
 	const userId = req.user.id;
@@ -3276,7 +3297,9 @@ app.delete(
 							if (this.changes === 0) {
 								return res.status(404).json({ error: "Submission not found." });
 							}
-              console.log(`User ID: ${userId} deleted contact form submission ID: ${submissionId} successfully.`);
+							console.log(
+								`User ID: ${userId} deleted contact form submission ID: ${submissionId} successfully.`
+							);
 							res.json({
 								message: "Contact form submission deleted successfully.",
 							});
