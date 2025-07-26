@@ -506,7 +506,7 @@ app.get("/auth/google", (req, res, next) => {
 	if (redirectUri && !allowedHtmlRegex.test(redirectUri)) {
 		return res.status(400).send("Invalid redirect_uri");
 	}
-// Generate a random temporary key (using crypto)
+	// Generate a random temporary key (using crypto)
 	const tempKey = require("crypto").randomBytes(16).toString("hex");
 	// Store the redirect URI in our in‑memory store using the temp key.
 	redirectUriStore[tempKey] = redirectUri;
@@ -3170,9 +3170,9 @@ app.post("/api/contact-form/submit", (req, res) => {
 		return res.status(400).send("Message cannot exceed 500 characters.");
 	}
 
-  if(message.length < 10) {
-	return res.status(400).send("Message must be at least 10 characters long.");
-  }
+	if (message.length < 10) {
+		return res.status(400).send("Message must be at least 10 characters long.");
+	}
 
 	if (!/^\d{10}$/.test(String(phone))) {
 		return res.status(400).send("Phone number must be a 10-digit number.");
@@ -3205,10 +3205,10 @@ app.post("/api/user/contact-form/submit", authenticateJWT, (req, res) => {
 	if (message.length > 500) {
 		return res.status(400).send("Message cannot exceed 500 characters.");
 	}
-  if(message.length < 10) {
-	return res.status(400).send("Message must be at least 10 characters long.");
-  }
-	if(!useAccountPhoneNumber && (!phone || !/^\d{10}$/.test(String(phone)))) {
+	if (message.length < 10) {
+		return res.status(400).send("Message must be at least 10 characters long.");
+	}
+	if (!useAccountPhoneNumber && (!phone || !/^\d{10}$/.test(String(phone)))) {
 		return res.status(400).send("Phone number must be a 10-digit number.");
 	}
 	const user = db.get(
