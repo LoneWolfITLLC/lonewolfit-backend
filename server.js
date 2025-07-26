@@ -501,7 +501,12 @@ const redirectUriStore = {};
 app.get("/auth/google", (req, res, next) => {
 	// Grab redirect_uri from the query parameters
 	const redirectUri = req.query.redirect_uri;
-	// Generate a random temporary key (using crypto)
+	//Verify that the redirectUri is a valid URL and on the same domain
+	const allowedHtmlRegex = /^\/?[a-zA-Z0-9_-]+\.html$/i;
+	if (redirectUri && !allowedHtmlRegex.test(redirectUri)) {
+		return res.status(400).send("Invalid redirect_uri");
+	}
+// Generate a random temporary key (using crypto)
 	const tempKey = require("crypto").randomBytes(16).toString("hex");
 	// Store the redirect URI in our in‑memory store using the temp key.
 	redirectUriStore[tempKey] = redirectUri;
@@ -3166,7 +3171,7 @@ app.post("/api/contact-form/submit", (req, res) => {
 	}
 
   if(message.length < 10) {
-    return res.status(400).send("Message must be at least 10 characters long.");
+	return res.status(400).send("Message must be at least 10 characters long.");
   }
 
 	if (!/^\d{10}$/.test(String(phone))) {
@@ -3201,7 +3206,7 @@ app.post("/api/user/contact-form/submit", authenticateJWT, (req, res) => {
 		return res.status(400).send("Message cannot exceed 500 characters.");
 	}
   if(message.length < 10) {
-    return res.status(400).send("Message must be at least 10 characters long.");
+	return res.status(400).send("Message must be at least 10 characters long.");
   }
 	if(!useAccountPhoneNumber && (!phone || !/^\d{10}$/.test(String(phone)))) {
 		return res.status(400).send("Phone number must be a 10-digit number.");
