@@ -3329,11 +3329,11 @@ app.delete(
 // Start HTTP server for local testing
 if (process.env.NODE_ENV === "production") {
 	// Production: HTTPS
+	const PRIV_KEY = process.env.PRIV_KEY;
+	const FULL_CHAIN = process.env.FULL_CHAIN;
 	const httpsOptions = {
-		key: fs.readFileSync("/etc/letsencrypt/live/www.lonewolfit.io/privkey.pem"),
-		cert: fs.readFileSync(
-			"/etc/letsencrypt/live/www.lonewolfit.io/fullchain.pem"
-		),
+		key: fs.readFileSync(PRIV_KEY),
+		cert: fs.readFileSync(FULL_CHAIN),
 	};
 
 	https.createServer(httpsOptions, app).listen(PORT, () => {
