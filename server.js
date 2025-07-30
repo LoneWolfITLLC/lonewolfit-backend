@@ -234,6 +234,12 @@ function checkAndAddColumns() {
 	});
 }
 
+function allowedUsername(username) {
+	// Define a regex pattern for allowed characters (alphanumeric, underscores, hyphens)
+	const allowedPattern = /^[a-zA-Z0-9_-]+$/;
+	return allowedPattern.test(username);
+}
+
 let verificationCodes = {}; // To store verification codes temporarily
 let tempUsers = {}; // Store temporary user data before verification
 
@@ -645,6 +651,10 @@ app.post(
 			}
 		}
 
+		if(!allowedUsername(username)) {
+			return res.status(400).send("Invalid username format. Only alphanumeric characters, underscores, and hyphens are allowed.");
+		}
+
 		try {
 			// Check if the user already exists by email
 			db.get(
@@ -819,6 +829,13 @@ app.post("/api/auth/register", upload.none(), async (req, res) => {
 				.status(400)
 				.json({ message: `Missing required field: ${field}` });
 		}
+	}
+
+	//Validate username format
+	if (!allowedUsername(username)) {
+		return res
+			.status(400)
+			.send("Invalid username format. Only alphanumeric characters, underscores, and hyphens are allowed.");
 	}
 
 	// Validate email format (basic)
@@ -1730,6 +1747,11 @@ app.put("/api/admin/edit-user", authenticateJWT, async (req, res) => {
 			.status(400)
 			.json({ error: "Only owner accounts can make someone an admin..." });
 	}
+	if(!allowedUsername(username)) {
+		return res.status(400).json({
+			error: "Invalid username format. Only alphanumeric characters, underscores, and hyphens are allowed."
+		});
+	}
 	try {
 		// Update user information in the database
 		await new Promise((resolve, reject) => {
@@ -1831,6 +1853,12 @@ app.put("/api/auth/edit-user", authenticateJWT, async (req, res) => {
 		return res
 			.status(403)
 			.json({ message: "You are not allowed to edit your information." });
+	}
+
+	if(!allowedUsername(username)) {
+		return res.status(400).json({
+			error: "Invalid username format. Only alphanumeric characters, underscores, and hyphens are allowed."
+		});
 	}
 
 	let adminUser = await checkAdminStatus(email); //gpt is this the way to access the variable from the user in the request?
@@ -1935,6 +1963,12 @@ app.post(
 				console.log(`Updating Stripe customer username to: ${username}`);
 
 				let adminUser = await checkAdminStatus(email);
+
+				if(!allowedUsername(username)) {
+					return res.status(400).json({
+						error: "Cannot update stripe customer. Invalid username format. Only alphanumeric characters, underscores, and hyphens are allowed."
+					});
+				}
 
 				// Update the Stripe customer details
 				try {
