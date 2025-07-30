@@ -1966,10 +1966,6 @@ app.post(
             .json({ message: "No Stripe customer ID found." });
         }
 
-        // Log the customerId and username before making the Stripe request
-        console.log(`Updating Stripe customer with ID: ${customerId}`);
-        console.log(`Updating Stripe customer username to: ${username}`);
-
         let adminUser = await checkAdminStatus(email);
 
         if (!allowedUsername(username)) {
@@ -1978,6 +1974,10 @@ app.post(
               "Cannot update stripe customer. Invalid username format. Only alphanumeric characters, underscores, and hyphens are allowed.",
           });
         }
+
+		// Log the customerId and username before making the Stripe request
+        console.log(`Updating Stripe customer with ID: ${customerId}`);
+        console.log(`Updating Stripe customer username to: ${username}`);
 
         // Update the Stripe customer details
         try {
@@ -2053,6 +2053,13 @@ app.post(
       if (!(await checkAdminStatusByID(adminId))) {
         return res.status(403).json({ message: "Not an approved admin." });
       }
+
+	  if(!allowedUsername(username)) {
+		return res.status(400).json({
+		  message:
+			"Cannot update stripe customer. Invalid username format. Only alphanumeric characters, underscores, and hyphens are allowed.",
+		});
+	  }
 
       //
       // ── PARSE ADDRESS HERE ────────────────────────────────────────────────────────
