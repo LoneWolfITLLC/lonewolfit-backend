@@ -422,8 +422,12 @@ app.post("/api/auth/reset-password", upload.none(), async (req, res) => {
 			}
 		);
 	} else {
-		console.log("Invalid verification code:", verificationCode);
-		return res.status(400).send("Invalid verification code");
+		console.log("Invalid verification code entered:", verificationCode);
+		if (!verificationCodes[email])
+			return res
+				.status(404)
+				.json({ message: "Verification code does not exist." });
+		else return res.status(400).send("Invalid verification code");
 	}
 });
 // JWT middleware with enhanced error logging
@@ -1154,8 +1158,12 @@ app.post("/api/auth/verify-registration", async (req, res) => {
 				.json({ message: "No temporary registration found for this email." });
 		}
 	} else {
-		console.log("Invalid verification code:", code);
-		return res.status(400).json({ message: "Invalid verification code" });
+		console.log("Invalid verification code entered:", code);
+		if (!verificationCodes[email])
+			return res
+				.status(404)
+				.json({ message: "Verification code does not exist." });
+		else return res.status(400).json({ message: "Invalid verification code" });
 	}
 });
 
@@ -1289,7 +1297,12 @@ app.post("/api/auth/verify-login", (req, res) => {
 			}
 		);
 	} else {
-		res.status(400).send("Invalid verification code");
+		// Check to see if user exists in the database
+		if (!verificationCodes[email])
+			return res
+				.status(404)
+				.json({ message: "Verification code does not exist." });
+		else return res.status(400).json({ message: "Invalid verification code" });
 	}
 });
 // Resend Verification Code Endpoint
