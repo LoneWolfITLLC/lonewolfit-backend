@@ -627,7 +627,8 @@ app.get("/auth/google/callback", (req, res, next) => {
 			if (info && info.tempUserData) {
 				// Store email in tempUsers
 				tempUsers[info.tempUserData.email] = info.tempUserData;
-
+				// Set an expiration for the temporary user data
+				setTempUserExpiry(info.tempUserData.email, 5); // 5 minutes expiration
 				console.log(
 					"Temporary user data stored in tempUsers:",
 					tempUsers[info.tempUserData.email]
@@ -662,7 +663,7 @@ app.get("/auth/google/callback", (req, res, next) => {
 			);
 			db.run(
 				"UPDATE users SET is_online = 1, last_ping = ? WHERE email = ?",
-				[Date.now(), email],
+				[Date.now(), user.email],
 				(err) => {
 					if (err)
 						console.error("Error setting user online status:", err.message);
