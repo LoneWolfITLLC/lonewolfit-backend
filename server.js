@@ -1217,6 +1217,11 @@ app.post("/api/auth/login", async (req, res) => {
 
 				if (user) {
 					console.log("User found in database, checking password for:", email);
+					if(!user.password && user.google_id) {
+						// User is authenticated via Google
+						console.log("User authenticated via Google, no password check needed.");
+						return res.status(404).send("Password not found in database. User authenticated via Google. Please log in with Google.");
+					}
 					// Check password
 					const match = await bcrypt.compare(password, user.password);
 					if (match) {
