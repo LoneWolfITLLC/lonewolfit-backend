@@ -3458,7 +3458,7 @@ app.post("/api/contact-form/submit", async (req, res) => {
         params.append("response", turnstileToken);
         // optional: params.append("remoteip", req.ip);
 
-        const verifyRes = await fetch(verifyUrl, { method: "POST", body: params });
+        const verifyRes = await app.fetch(verifyUrl, { method: "POST", body: params });
         const verifyJson = await verifyRes.json();
         if (!verifyJson.success) {
             console.warn("Turnstile verify failed:", verifyJson);
@@ -3516,7 +3516,7 @@ app.post("/api/user/contact-form/submit", authenticateJWT, async (req, res) => {
         params.append("response", turnstileToken);
         // optional: params.append("remoteip", req.ip);
 
-        const verifyRes = await fetch(verifyUrl, { method: "POST", body: params });
+        const verifyRes = await app.fetch(verifyUrl, { method: "POST", body: params });
         const verifyJson = await verifyRes.json();
         if (!verifyJson.success) {
             console.warn("Turnstile verify failed:", verifyJson);
