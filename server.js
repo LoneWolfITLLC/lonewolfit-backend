@@ -908,6 +908,7 @@ app.post("/api/auth/register", upload.none(), async (req, res) => {
 		password,
 		dbaName,
 		businessAddress,
+		turnstileToken,
 	} = req.body;
 
 	// Define required fields
@@ -946,6 +947,30 @@ app.post("/api/auth/register", upload.none(), async (req, res) => {
 	if (!emailRegex.test(email)) {
 		return res.status(400).status("Invalid email address");
 	}
+
+	 // Require Turnstile token
+    if (!turnstileToken) {
+        return res.status(400).send("Missing captcha token.");
+    }
+
+    // Verify Turnstile token with Cloudflare
+    try {
+        const verifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+        const params = new URLSearchParams();
+        params.append("secret", process.env.TURNSTILE_SECRET);
+        params.append("response", turnstileToken);
+        // optional: params.append("remoteip", req.ip);
+
+        const verifyRes = await fetch(verifyUrl, { method: "POST", body: params });
+        const verifyJson = await verifyRes.json();
+        if (!verifyJson.success) {
+            console.warn("Turnstile verify failed:", verifyJson);
+            return res.status(403).send("Captcha verification failed.");
+        }
+    } catch (err) {
+        console.error("Turnstile verification error:", err);
+        return res.status(500).send("Captcha verification error: " + err.message);
+    }
 
 	// Check if the domain has MX records
 	const emailDomain = email.split("@")[1];
@@ -3466,7 +3491,7 @@ app.post("/api/contact-form/submit", async (req, res) => {
         }
     } catch (err) {
         console.error("Turnstile verification error:", err);
-        return res.status(500).send("Captcha verification error.");
+        return res.status(500).send("Captcha verification error: " + err.message);
     }
 
 	// Insert the contact form submission into the database
@@ -3524,7 +3549,7 @@ app.post("/api/user/contact-form/submit", authenticateJWT, async (req, res) => {
         }
     } catch (err) {
         console.error("Turnstile verification error:", err);
-        return res.status(500).send("Captcha verification error.");
+        return res.status(500).send("Captcha verification error: " + err.message);
     }
 
 	const user = db.get(
