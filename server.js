@@ -3454,7 +3454,7 @@ app.post("/api/contact-form/submit", async (req, res) => {
     try {
         const verifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
         const params = new URLSearchParams();
-        params.append("secret", process.env.TURNSTILE_SECRET || "YOUR_TURNSTILE_SECRET");
+        params.append("secret", process.env.TURNSTILE_SECRET);
         params.append("response", turnstileToken);
         // optional: params.append("remoteip", req.ip);
 
@@ -3512,7 +3512,7 @@ app.post("/api/user/contact-form/submit", authenticateJWT, async (req, res) => {
     try {
         const verifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
         const params = new URLSearchParams();
-        params.append("secret", process.env.TURNSTILE_SECRET || "YOUR_TURNSTILE_SECRET");
+        params.append("secret", process.env.TURNSTILE_SECRET);
         params.append("response", turnstileToken);
         // optional: params.append("remoteip", req.ip);
 
