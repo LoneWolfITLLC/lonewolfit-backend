@@ -19,8 +19,8 @@ const upload = multer();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY); // Import Stripe
 const dns = require("dns");
 const bcrypt = require("bcrypt");
-const fetch = require("node-fetch");
 const app = express();
+const fetch = app.fetch;
 const PORT = process.env.PORT || 2096;
 
 const corsOptions = {
