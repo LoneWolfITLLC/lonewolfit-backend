@@ -19,6 +19,7 @@ const upload = multer();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY); // Import Stripe
 const dns = require("dns");
 const bcrypt = require("bcrypt");
+const fetch = require("node-fetch");
 const app = express();
 const PORT = process.env.PORT || 2096;
 
@@ -3421,8 +3422,8 @@ app.delete(
 	}
 );
 
-app.post("/api/contact-form/submit", (req, res) => {
-	const { name, email, phone, message } = req.body;
+app.post("/api/contact-form/submit", async (req, res) => {
+	const { name, email, phone, message, turnstileToken } = req.body;
 	if (!name || !phone || !message) {
 		return res.status(400).send("Name, phone, and message are required.");
 	}
@@ -3443,6 +3444,31 @@ app.post("/api/contact-form/submit", (req, res) => {
 		return res.status(400).send("Phone number must be a 10-digit number.");
 	}
 
+
+	// Require Turnstile token
+    if (!turnstileToken) {
+        return res.status(400).send("Missing captcha token.");
+    }
+
+    // Verify Turnstile token with Cloudflare
+    try {
+        const verifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+        const params = new URLSearchParams();
+        params.append("secret", process.env.TURNSTILE_SECRET || "YOUR_TURNSTILE_SECRET");
+        params.append("response", turnstileToken);
+        // optional: params.append("remoteip", req.ip);
+
+        const verifyRes = await fetch(verifyUrl, { method: "POST", body: params });
+        const verifyJson = await verifyRes.json();
+        if (!verifyJson.success) {
+            console.warn("Turnstile verify failed:", verifyJson);
+            return res.status(403).send("Captcha verification failed.");
+        }
+    } catch (err) {
+        console.error("Turnstile verification error:", err);
+        return res.status(500).send("Captcha verification error.");
+    }
+
 	// Insert the contact form submission into the database
 	db.run(
 		"INSERT INTO contact_form_submissions (name, email, phone, message) VALUES (?, ?, ?, ?)",
@@ -3460,8 +3486,8 @@ app.post("/api/contact-form/submit", (req, res) => {
 	);
 });
 
-app.post("/api/user/contact-form/submit", authenticateJWT, (req, res) => {
-	const { message, phone, useAccountPhoneNumber } = req.body;
+app.post("/api/user/contact-form/submit", authenticateJWT, async (req, res) => {
+	const { message, phone, useAccountPhoneNumber, turnstileToken } = req.body;
 	// Extract user ID from JWT
 	const userId = req.user.id;
 	if (!message || message.trim() === "") {
@@ -3476,6 +3502,31 @@ app.post("/api/user/contact-form/submit", authenticateJWT, (req, res) => {
 	if (!useAccountPhoneNumber && (!phone || !/^\d{10}$/.test(String(phone)))) {
 		return res.status(400).send("Phone number must be a 10-digit number.");
 	}
+
+	 // Require Turnstile token
+    if (!turnstileToken) {
+        return res.status(400).send("Missing captcha token.");
+    }
+
+    // Verify Turnstile token with Cloudflare
+    try {
+        const verifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+        const params = new URLSearchParams();
+        params.append("secret", process.env.TURNSTILE_SECRET || "YOUR_TURNSTILE_SECRET");
+        params.append("response", turnstileToken);
+        // optional: params.append("remoteip", req.ip);
+
+        const verifyRes = await fetch(verifyUrl, { method: "POST", body: params });
+        const verifyJson = await verifyRes.json();
+        if (!verifyJson.success) {
+            console.warn("Turnstile verify failed:", verifyJson);
+            return res.status(403).send("Captcha verification failed.");
+        }
+    } catch (err) {
+        console.error("Turnstile verification error:", err);
+        return res.status(500).send("Captcha verification error.");
+    }
+
 	const user = db.get(
 		"SELECT * FROM users WHERE id = ?",
 		[userId],
