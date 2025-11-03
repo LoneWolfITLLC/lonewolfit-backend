@@ -2859,7 +2859,7 @@ app.post("/api/submit-testimonial", authenticateJWT, async (req, res) => {
   }
   // Require Turnstile token
   if (!turnstileToken && process.env.TURNSTILES_ENABLED === "true") {
-    return res.status(400).send("Missing captcha token.");
+    return res.status(400).json({ message: "Missing captcha token." });
   }
 
   // Verify Turnstile token with Cloudflare
@@ -2879,11 +2879,11 @@ app.post("/api/submit-testimonial", authenticateJWT, async (req, res) => {
       const verifyJson = await verifyRes.json();
       if (!verifyJson.success) {
         console.warn("Turnstile verify failed:", verifyJson);
-        return res.status(403).send("Captcha verification failed.");
+        return res.status(403).json({ message: "Captcha verification failed." });
       }
     } catch (err) {
       console.error("Turnstile verification error:", err);
-      return res.status(500).send("Captcha verification error: " + err.message);
+      return res.status(500).json({ message: "Captcha verification error: " + err.message });
     }
   }
 
