@@ -2078,6 +2078,7 @@ app.put("/api/auth/edit-user", authenticateJWT, async (req, res) => {
     stripeCustomerId,
     dbaName,
     businessAddress,
+    turnstileToken,
   } = req.body;
 
   // Check required fields including stripeCustomerId
@@ -2134,6 +2135,36 @@ app.put("/api/auth/edit-user", authenticateJWT, async (req, res) => {
       error:
         "Invalid username format. Only alphanumeric characters, underscores, and hyphens are allowed.",
     });
+  }
+
+  // Require Turnstile token
+  if (!turnstileToken && process.env.TURNSTILES_ENABLED === "true") {
+    return res.status(400).send("Missing captcha token.");
+  }
+
+  // Verify Turnstile token with Cloudflare
+  if (process.env.TURNSTILES_ENABLED === "true") {
+    try {
+      const verifyUrl =
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+      const params = new URLSearchParams();
+      params.append("secret", process.env.TURNSTILE_SECRET);
+      params.append("response", turnstileToken);
+      // optional: params.append("remoteip", req.ip);
+
+      const verifyRes = await fetch(verifyUrl, {
+        method: "POST",
+        body: params,
+      });
+      const verifyJson = await verifyRes.json();
+      if (!verifyJson.success) {
+        console.warn("Turnstile verify failed:", verifyJson);
+        return res.status(403).send("Captcha verification failed.");
+      }
+    } catch (err) {
+      console.error("Turnstile verification error:", err);
+      return res.status(500).send("Captcha verification error: " + err.message);
+    }
   }
 
   let adminUser = await checkAdminStatus(email); //gpt is this the way to access the variable from the user in the request?
