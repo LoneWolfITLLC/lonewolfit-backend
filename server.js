@@ -2215,7 +2215,7 @@ app.put("/api/auth/edit-user", authenticateJWT, async (req, res) => {
 			const oktoken = jwt.sign(
 			{
 				captchaPassed: true,
-				userId: userData.id, // optional: tie to user
+				userId: userId, // optional: tie to user
 			},
 			process.env.JWT_SECRET,
 			{ expiresIn: "2m" } // short expiry for security
