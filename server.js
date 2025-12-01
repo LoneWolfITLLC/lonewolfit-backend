@@ -629,7 +629,8 @@ app.get("/auth/google/callback", (req, res, next) => {
       if (info && info.tempUserData) {
         // Store email in tempUsers
         tempUsers[info.tempUserData.email] = info.tempUserData;
-
+        // Set an expiration for the temporary user data
+        setTempUserExpiry(info.tempUserData.email, 5); // 5 minutes expiration
         console.log(
           "Temporary user data stored in tempUsers:",
           tempUsers[info.tempUserData.email]
@@ -1267,6 +1268,7 @@ app.post("/api/auth/login", async (req, res) => {
               100000 + Math.random() * 900000
             ).toString();
             verificationCodes[email] = verificationCode;
+            setVerificationCodeExpiry(email); // Set expiration for the code
 
             const mailOptions = {
               from: process.env.EMAIL,
@@ -1355,6 +1357,7 @@ app.post("/api/auth/resend-verification", (req, res) => {
       100000 + Math.random() * 900000
     ).toString();
     verificationCodes[email] = verificationCode; // Store it in memory
+    setVerificationCodeExpiry(email); // Set expiration for the code
 
     // Send the verification code again
     const mailOptions = {
@@ -1420,6 +1423,7 @@ app.post("/api/auth/resend-verification-login", (req, res) => {
       100000 + Math.random() * 900000
     ).toString();
     verificationCodes[email] = verificationCode;
+    setVerificationCodeExpiry(email); // Set expiration for the code
 
     const mailOptions = {
       from: process.env.EMAIL,
@@ -2468,6 +2472,7 @@ app.post("/api/auth/send-verification-code", (req, res) => {
 
     // Store the verification code temporarily
     verificationCodes[email] = verificationCode;
+    setVerificationCodeExpiry(email); // Set expiration for the code
 
     const mailOptions = {
       from: process.env.EMAIL,
