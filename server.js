@@ -2071,6 +2071,8 @@ app.put("/api/admin/edit-user", authenticateJWT, async (req, res) => {
 	}
 });
 
+let oktokens = {}; // In-memory storage for oktokens
+
 app.put("/api/auth/edit-user", authenticateJWT, async (req, res) => {
 	const {
 		firstName,
@@ -2206,7 +2208,26 @@ app.put("/api/auth/edit-user", authenticateJWT, async (req, res) => {
 		});
 
 		console.log("User updated successfully:", { userId, ...req.body });
-		res.status(200).json({ message: "User updated successfully!" });
+		const successJson = { message: "User updated successfully!" };
+
+		// Generate JWT proof that captcha passed
+		if (process.env.TURNSTILES_ENABLED === "true") {
+			const oktoken = jwt.sign(
+			{
+				captchaPassed: true,
+				userId: userData.id, // optional: tie to user
+			},
+			process.env.JWT_SECRET,
+			{ expiresIn: "2m" } // short expiry for security
+			);
+			oktokens[userId] = oktoken;
+			successJson.turnstileTokenOk = oktoken;
+		}
+		
+
+		res
+			.status(200)
+			.json(successJson);
 	} catch (error) {
 		console.error("Error updating user:", error);
 		res.status(500).json({ message: "Error updating user: " + error.message });
@@ -2226,7 +2247,7 @@ app.post(
 			address,
 			dbaName,
 			businessAddress,
-			turnstileToken,
+			turnstileTokenOk,
 		} = req.body;
 
 		// Confirm the address object is structured correctly
@@ -2243,35 +2264,20 @@ app.post(
 		const userId = req.user.id;
 
 		// Require Turnstile token
-		if (!turnstileToken && process.env.TURNSTILES_ENABLED === "true") {
-			return res.status(400).json({ message: "Missing captcha token." });
+		if (!turnstileTokenOk && process.env.TURNSTILES_ENABLED === "true") {
+			return res
+				.status(400)
+				.json({ message: "Missing captcha token shake hash." });
 		}
 
 		// Verify Turnstile token with Cloudflare
 		if (process.env.TURNSTILES_ENABLED === "true") {
-			try {
-				const verifyUrl =
-					"https://challenges.cloudflare.com/turnstile/v0/siteverify";
-				const params = new URLSearchParams();
-				params.append("secret", process.env.TURNSTILE_SECRET);
-				params.append("response", turnstileToken);
-				// optional: params.append("remoteip", req.ip);
-
-				const verifyRes = await fetch(verifyUrl, {
-					method: "POST",
-					body: params,
-				});
-				const verifyJson = await verifyRes.json();
-				if (!verifyJson.success) {
-					console.warn("Turnstile verify failed:", verifyJson);
-					return res.status(403).json({ message: "Captcha verification failed." });
-				}
-			} catch (err) {
-				console.error("Turnstile verification error:", err);
+			if(!oktokens[userId] || oktokens[userId] !== turnstileTokenOk) {
 				return res
-					.status(500)
-					.json({ message: "Captcha verification error: " + err.message });
+					.status(403)
+					.json({ message: "Captcha verification failed (token mismatch)." });
 			}
+			else delete oktokens[userId]; // single use only
 		}
 
 		// Check if user is allowed to edit
