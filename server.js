@@ -1320,8 +1320,8 @@ app.post("/api/auth/verify-login", (req, res) => {
         delete verificationCodes[email]; // Clean up our stored code
         if (invalidatedTokens[email]) {
           console.warn("User's token has been invalidated:", email);
-          delete invalidatedTokens[email]; // Remove the invalidation 
-          delete invalidatedTokensById[user.id]; //Remove the invalidation by user ID
+          delete invalidatedTokens[email]; // Remove the invalidation
+          delete invalidatedTokensById[user.id]; // Remove the invalidation by user ID
         }
         db.run(
           "UPDATE users SET is_online = 1, last_ping = ? WHERE email = ?",
