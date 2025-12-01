@@ -895,6 +895,20 @@ const mxLookupWithTimeout = async (domain, timeoutMs) => {
 	});
 };
 
+app.delete("/api/auth/delete-temp-user", (req, res) => {
+	const { email } = req.body;
+	if (tempUsers[email]) {
+		tempUsers[email] = null;
+		delete tempUsers[email];
+		console.log("Temporary user data deleted for:", email);
+		return res.status(200).send("Temporary user data deleted.");
+	}
+	else {
+		console.log("No temporary user data found for:", email);
+		return res.status(404).send("No temporary user data found.");
+	}
+});
+
 // Update the register endpoint to handle file uploads
 app.post("/api/auth/register", upload.none(), async (req, res) => {
 	const {
