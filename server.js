@@ -902,8 +902,7 @@ app.delete("/api/auth/delete-temp-user", (req, res) => {
 		delete tempUsers[email];
 		console.log("Temporary user data deleted for:", email);
 		return res.status(200).send("Temporary user data deleted.");
-	}
-	else {
+	} else {
 		console.log("No temporary user data found for:", email);
 		return res.status(404).send("No temporary user data found.");
 	}
@@ -2227,6 +2226,7 @@ app.post(
 			address,
 			dbaName,
 			businessAddress,
+			turnstileToken,
 		} = req.body;
 
 		// Confirm the address object is structured correctly
@@ -2241,6 +2241,38 @@ app.post(
 
 		// Get the userId from the request, which is populated by the authenticateJWT middleware
 		const userId = req.user.id;
+
+		// Require Turnstile token
+		if (!turnstileToken && process.env.TURNSTILES_ENABLED === "true") {
+			return res.status(400).send("Missing captcha token.");
+		}
+
+		// Verify Turnstile token with Cloudflare
+		if (process.env.TURNSTILES_ENABLED === "true") {
+			try {
+				const verifyUrl =
+					"https://challenges.cloudflare.com/turnstile/v0/siteverify";
+				const params = new URLSearchParams();
+				params.append("secret", process.env.TURNSTILE_SECRET);
+				params.append("response", turnstileToken);
+				// optional: params.append("remoteip", req.ip);
+
+				const verifyRes = await fetch(verifyUrl, {
+					method: "POST",
+					body: params,
+				});
+				const verifyJson = await verifyRes.json();
+				if (!verifyJson.success) {
+					console.warn("Turnstile verify failed:", verifyJson);
+					return res.status(403).send("Captcha verification failed.");
+				}
+			} catch (err) {
+				console.error("Turnstile verification error:", err);
+				return res
+					.status(500)
+					.send("Captcha verification error: " + err.message);
+			}
+		}
 
 		// Check if user is allowed to edit
 		db.get(
