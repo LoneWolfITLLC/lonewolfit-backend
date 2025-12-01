@@ -46,7 +46,7 @@ const corsOptions = {
     }
 
     if (!origin) {
-      console.warn("CORS request without origin:", origin); // Log the undefined origin
+      //console.warn("CORS request without origin:", origin); // Log the undefined origin
       callback(null, true); // Allow requests without an Origin header (or handle it as needed)
       return; // Exit the function
     }
@@ -320,6 +320,7 @@ passport.use(
               if (invalidatedTokens[email]) {
                 console.warn("User's token has been invalidated:", email);
                 delete invalidatedTokens[email]; // Remove the invalidation status
+                delete invalidatedTokensById[user.id];
               }
               return done(null, user); // Existing user, proceed to home/dashboard
             } else {
@@ -370,9 +371,11 @@ passport.deserializeUser((id, done) => {
   });
 });
 let invalidatedTokens = {}; // For production, use a persistent store like Redis or database
-function invalidateUserTokens(email) {
+let invalidatedTokensById = {};
+function invalidateUserTokens(email, userId) {
   // In this example, we will keep track of invalidated tokens in memory
   invalidatedTokens[email] = Date.now(); // Store an invalidation timestamp
+  invalidatedTokensById[userId] = Date.now();
 
   console.log(`Invalidated tokens for user: ${email}`);
 }
@@ -405,11 +408,6 @@ app.post("/api/auth/reset-password", upload.none(), async (req, res) => {
         // Clean up the verification code
         delete verificationCodes[email];
 
-        // Invalidate all existing tokens if signOutAllDevices is true
-        if (signOutAllDevices) {
-          invalidateUserTokens(email);
-        }
-
         // Fetch the user to generate a new token
         db.get(
           "SELECT id, email FROM users WHERE email = ?",
@@ -419,6 +417,10 @@ app.post("/api/auth/reset-password", upload.none(), async (req, res) => {
               console.error("Failed to fetch user for token generation:", err);
               return res.status(500).send("Failed to generate new token");
             }
+            // Invalidate all existing tokens if signOutAllDevices is true
+            if (signOutAllDevices) {
+              invalidateUserTokens(email, user.id);
+            }
             console.log("Password reset successfully for email:", email);
             return res.status(200).send("Password updated successfully");
           }
@@ -426,12 +428,8 @@ app.post("/api/auth/reset-password", upload.none(), async (req, res) => {
       }
     );
   } else {
-    console.log("Invalid verification code entered:", verificationCode);
-    if (!verificationCodes[email])
-      return res
-        .status(404)
-        .json({ message: "Verification code does not exist." });
-    else return res.status(400).send("Invalid verification code");
+    console.log("Invalid verification code:", verificationCode);
+    return res.status(400).send("Invalid verification code");
   }
 });
 // JWT middleware with enhanced error logging
@@ -442,11 +440,11 @@ const authenticateJWT = (req, res, next) => {
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
       if (err) {
         // Check if the token is malformed
-        if (err instanceof jwt.JsonWebTokenError) {
+        if (err instanceof jwt.JsonWebTokenError && decoded && decoded.id) {
           console.warn("JWT verification warning: Malformed token");
           db.run(
-            "UPDATE users SET is_online = 0 WHERE email = ?",
-            [decoded.email],
+            "UPDATE users SET is_online = 0 WHERE id = ?",
+            [decoded.id],
             (err) => {
               if (err) {
                 console.error("Error updating user status:", err);
@@ -455,17 +453,17 @@ const authenticateJWT = (req, res, next) => {
           );
           console.log(
             "User status updated to offline due to malformed token:",
-            decoded.email
+            decoded.id
           );
           return res.status(400).json({ message: "Malformed token" });
         }
 
         // Check if the error is due to token expiration
-        if (err.name === "TokenExpiredError") {
+        if (err.name === "TokenExpiredError" && decoded && decoded.id) {
           console.warn("JWT verification warning: Token has expired");
           db.run(
-            "UPDATE users SET is_online = 0 WHERE email = ?",
-            [decoded.email],
+            "UPDATE users SET is_online = 0 WHERE id = ?",
+            [decoded.id],
             (err) => {
               if (err) {
                 console.error("Error updating user status:", err);
@@ -474,33 +472,33 @@ const authenticateJWT = (req, res, next) => {
           );
           console.log(
             "User status updated to offline due to expired token:",
-            decoded.email
+            decoded.id
           );
           return res.status(403).json({ message: "Token has expired" });
         }
 
         // Log other verification errors as errors
         console.error("JWT verification error:", err);
-        db.run(
-          "UPDATE users SET is_online = 0 WHERE email = ?",
-          [decoded.email],
+        if (decoded && decoded.id) db.run(
+          "UPDATE users SET is_online = 0 WHERE id = ?",
+          [decoded.id],
           (err) => {
             if (err) {
               console.error("Error updating user status:", err);
             }
           }
         );
-        console.log(
+        if (decoded && decoded.id) console.log(
           "User status updated to offline due to invalid token:",
-          decoded.email
+          decoded.id
         );
         return res.status(403).json({ message: "Token is not valid" });
       }
-      // Check if this token has been invalidated using the email from the decoded JWT
-      if (decoded && decoded.email && invalidatedTokens[decoded.email]) {
+      // Check if this token has been invalidated using the id from the decoded JWT
+      if (decoded && decoded.id && invalidatedTokensById[decoded.id]) {
         db.run(
-          "UPDATE users SET is_online = 0 WHERE email = ?",
-          [decoded.email],
+          "UPDATE users SET is_online = 0 WHERE id = ?",
+          [decoded.id],
           (err) => {
             if (err) {
               console.error("Error updating user status:", err);
@@ -631,8 +629,7 @@ app.get("/auth/google/callback", (req, res, next) => {
       if (info && info.tempUserData) {
         // Store email in tempUsers
         tempUsers[info.tempUserData.email] = info.tempUserData;
-        // Set an expiration for the temporary user data
-        setTempUserExpiry(info.tempUserData.email, 5); // 5 minutes expiration
+
         console.log(
           "Temporary user data stored in tempUsers:",
           tempUsers[info.tempUserData.email]
@@ -705,10 +702,7 @@ app.post("/api/auth/user-temp-data", (req, res) => {
 
   if (tempUsers[email]) {
     console.log("Temporary user data found:", tempUsers[email]);
-    const tempUser = tempUsers[email];
-    tempUsers[email] = null; // Clear the temporary user data after sending it
-    console.log("Temporary user data cleared for:", email);
-    res.json(tempUser); // Send the temp user data back to the client
+    res.json(tempUsers[email]); // Send the temp user data back to the client
   } else {
     console.log("No temporary user data available for:", email);
     res.status(404).send("No temporary user data available.");
@@ -1273,7 +1267,6 @@ app.post("/api/auth/login", async (req, res) => {
               100000 + Math.random() * 900000
             ).toString();
             verificationCodes[email] = verificationCode;
-            setVerificationCodeExpiry(email);
 
             const mailOptions = {
               from: process.env.EMAIL,
@@ -1285,9 +1278,7 @@ app.post("/api/auth/login", async (req, res) => {
             transporter.sendMail(mailOptions, (error) => {
               if (error) {
                 console.error("Error sending email:", error);
-                return res
-                  .status(500)
-                  .send("Error sending verification email: " + error.message);
+                return res.status(500).send("Error sending verification email");
               }
               console.log("Verification code sent for login to:", email);
               return res
@@ -1329,7 +1320,8 @@ app.post("/api/auth/verify-login", (req, res) => {
         delete verificationCodes[email]; // Clean up our stored code
         if (invalidatedTokens[email]) {
           console.warn("User's token has been invalidated:", email);
-          delete invalidatedTokens[email]; // Remove the invalidation status
+          delete invalidatedTokens[email]; // Remove the invalidation 
+          delete invalidatedTokensById[user.id]; //Remove the invalidation by user ID
         }
         db.run(
           "UPDATE users SET is_online = 1, last_ping = ? WHERE email = ?",
@@ -1344,12 +1336,7 @@ app.post("/api/auth/verify-login", (req, res) => {
       }
     );
   } else {
-    // Check to see if user exists in the database
-    if (!verificationCodes[email])
-      return res
-        .status(404)
-        .json({ message: "Verification code does not exist." });
-    else return res.status(400).json({ message: "Invalid verification code" });
+    res.status(400).send("Invalid verification code");
   }
 });
 // Resend Verification Code Endpoint
@@ -1368,7 +1355,6 @@ app.post("/api/auth/resend-verification", (req, res) => {
       100000 + Math.random() * 900000
     ).toString();
     verificationCodes[email] = verificationCode; // Store it in memory
-    setVerificationCodeExpiry(email); // Set expiry for the code
 
     // Send the verification code again
     const mailOptions = {
@@ -1434,7 +1420,6 @@ app.post("/api/auth/resend-verification-login", (req, res) => {
       100000 + Math.random() * 900000
     ).toString();
     verificationCodes[email] = verificationCode;
-    setVerificationCodeExpiry(email); // Set expiry for the code
 
     const mailOptions = {
       from: process.env.EMAIL,
@@ -1522,7 +1507,7 @@ app.post("/api/auth/sign-out", authenticateJWT, async (req, res) => {
       console.log("User status updated to offline for email:", row.email);
       if (!doNotSignOutAllDevices) {
         // Invalidate all tokens for this user (sign out everywhere)
-        invalidateUserTokens(row.email);
+        invalidateUserTokens(row.email, userId);
         console.log("All devices signed out for:", row.email);
       } else {
         // Only sign out this session (do not invalidate all tokens)
@@ -1555,7 +1540,7 @@ function destroySession({ token, doNotSignOutAllDevices, req, res }) {
       return res.status(403).send("Invalid token");
     }
     if (user && user.id && user.email && !doNotSignOutAllDevices) {
-      invalidateUserTokens(user.email);
+      invalidateUserTokens(user.email, user.id);
       console.log("All sessions destroyed for:", user.email);
     } else {
       // Only sign out this session (do not invalidate all tokens)
@@ -1618,7 +1603,7 @@ setInterval(() => {
         if (err) console.error("Error updating user status:", err.message);
       });
       console.log("User marked offline:", row.id);
-      invalidateUserTokens(row.email);
+      invalidateUserTokens(row.email, row.id);
       console.log("All sessions invalidated for:", row.email);
     });
   });
@@ -2483,8 +2468,6 @@ app.post("/api/auth/send-verification-code", (req, res) => {
 
     // Store the verification code temporarily
     verificationCodes[email] = verificationCode;
-
-    setVerificationCodeExpiry(email);
 
     const mailOptions = {
       from: process.env.EMAIL,
@@ -3765,13 +3748,13 @@ if (process.env.NODE_ENV === "production") {
   };
 
   https.createServer(httpsOptions, app).listen(PORT, () => {
-    console.log(`Server is running on https://localhost:${PORT}`);
+    console.log(`Server is running on ${process.env.FULL_DOMAIN_NAME}:${PORT}`);
     initiateStripeSync(); // Start the initial sync
   });
 } else {
   // Local development: HTTP
   app.listen(PORT, () => {
-    console.log(`Server is running locally on http://localhost:${PORT}`);
+    console.log(`Server is running locally on ${process.env.FULL_DOMAIN_NAME}:${PORT}`);
     initiateStripeSync(); // Start the initial sync
   });
 }
