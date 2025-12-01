@@ -2345,6 +2345,7 @@ app.post(
 						address: stripeAddress, // Use the structured address object here
 						metadata,
 					});
+					if(oktokens[userId]) delete oktokens[userId]; // single use only
 
 					console.log("Stripe customer updated successfully:", updatedCustomer); // Log response
 					return res
